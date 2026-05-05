@@ -1,0 +1,10 @@
+.env
+token.pickle
+.cache
+__pycache__/
+*.pyc
+*.pyo
+credentials.json
+github-profile-README.md
+
+.claude/
