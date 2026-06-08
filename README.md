@@ -42,6 +42,10 @@ python chat.py
 python gui/desktop_pet.py
 ```
 
+Con microfono activado, Cloe escuchara "Hola Cloe" o "Cloe" para activar el microfono
+```bash
+python gui/desktop_pet.py mic_on
+```
 ---
 
 ## Arquitectura

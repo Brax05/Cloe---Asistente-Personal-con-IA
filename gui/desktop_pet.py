@@ -36,6 +36,10 @@ from chat import (
 )
 from tools import ToolDispatcher, available_tool_names
 from services.spotify_tools import play_track
+import speech_recognition as sr
+import sounddevice as sd
+import numpy as np
+import queue
 
 
 # ── Animación de kaomojis ──────────────────────────────────────────────────────
@@ -274,6 +278,91 @@ class InputPopup(QWidget):
             self.submitted.emit(text)
 
 
+# ── Voice Worker ───────────────────────────────────────────────────────────────
+class VoiceWorker(QThread):
+    speech_detected = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
+        self._running = True
+        self.recognizer = sr.Recognizer()
+        self.samplerate = 16000
+        self.channels = 1
+        self.q = queue.Queue()
+
+    def audio_callback(self, indata, frames, time, status):
+        if status:
+            pass
+        self.q.put(indata.copy())
+
+    def run(self):
+        try:
+            with sd.InputStream(samplerate=self.samplerate, channels=self.channels, 
+                                dtype='int16', callback=self.audio_callback, blocksize=8000):
+                print("Micrófono activado (sounddevice). Escuchando...")
+                while self._running:
+                    threshold = 300 # Ajustar según ruido ambiente
+                    silence_chunks = 0
+                    recording = []
+                    is_recording = False
+                    
+                    while self._running:
+                        try:
+                            chunk = self.q.get(timeout=0.5)
+                        except queue.Empty:
+                            continue
+                            
+                        energy = np.abs(chunk).mean()
+                        
+                        if not is_recording:
+                            if energy > threshold:
+                                is_recording = True
+                                recording.append(chunk)
+                                silence_chunks = 0
+                        else:
+                            recording.append(chunk)
+                            if energy < threshold:
+                                silence_chunks += 1
+                            else:
+                                silence_chunks = 0
+                                
+                            if silence_chunks > 3: # ~1.5 segundos de silencio
+                                break
+                    
+                    if recording and self._running:
+                        audio_data = np.concatenate(recording)
+                        audio = sr.AudioData(audio_data.tobytes(), self.samplerate, 2)
+                        
+                        try:
+                            text = self.recognizer.recognize_google(audio, language="es-ES").lower()
+                            print(f"🎤 [Reconocido]: '{text}'")
+                            
+                            if "cloe" in text or "chloe" in text:
+                                command = text.replace("hey cloe", "").replace("hey chloe", "").replace("cloe", "").replace("chloe", "").strip()
+                                if command.startswith(",") or command.startswith(":"):
+                                    command = command[1:].strip()
+                                if command:
+                                    print(f"[Comando enviado a Cloe]: '{command}'")
+                                    self.speech_detected.emit(command)
+                                else:
+                                    print("[Comando vacío tras palabra clave]")
+                            else:
+                                print("[Palabra clave 'Cloe' no detectada en la frase]")
+                        except sr.UnknownValueError:
+                            print("[No se entendió lo que dijiste]")
+                        except sr.RequestError as e:
+                            print(f"[Error de conexión con Google]: {e}")
+                        except Exception as e:
+                            print(f"[Error inesperado]: {e}")
+                            
+        except Exception as e:
+            print(f"Error inicializando sounddevice: {e}")
+
+    def stop(self):
+        self._running = False
+        self.wait()
+
+
 # ── Personaje principal ────────────────────────────────────────────────────────
 class CloePet(QWidget):
     SIZE = 110
@@ -290,6 +379,12 @@ class CloePet(QWidget):
         self.services: dict       = {}
 
         self._busy = False   # True mientras espera respuesta
+
+        self.mic_enabled = "mic_on" in sys.argv
+        if self.mic_enabled:
+            self.voice_worker = VoiceWorker()
+            self.voice_worker.speech_detected.connect(self._on_voice_input)
+            self.voice_worker.start()
 
         self._setup_window()
         self._bubble = SpeechBubble()
@@ -400,7 +495,7 @@ class CloePet(QWidget):
         chat_act = QAction("💬  Abrir chat", self)
         chat_act.triggered.connect(self._toggle_input)
         salir    = QAction("✕  Salir", self)
-        salir.triggered.connect(QApplication.quit)
+        salir.triggered.connect(self._quit_app)
         menu.addAction(chat_act)
         menu.addSeparator()
         menu.addAction(salir)
@@ -485,6 +580,16 @@ class CloePet(QWidget):
         # Programar siguiente charla espontánea
         if solo:
             self._schedule_solo()
+
+    def _on_voice_input(self, text: str):
+        if self._input.isVisible():
+            self._input.hide()
+        self._on_user_input(text)
+
+    def _quit_app(self):
+        if hasattr(self, "voice_worker") and self.voice_worker.isRunning():
+            self.voice_worker.stop()
+        QApplication.quit()
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
