@@ -562,7 +562,14 @@ class CloePet(QWidget):
         if not hasattr(self, "client"):
             return
         self._busy = True
-        self._worker = CloeWorker(self.client, self.messages, self.tools, self.dispatcher, text)
+        
+        # Filtrar herramientas de Spotify si el usuario no habló de música
+        # Esto evita que el LLM "alucine" y abra Spotify con frases cortas de voz
+        current_tools = self.tools
+        if not solo and not is_music_context(text):
+            current_tools = [t for t in self.tools if not t["function"]["name"].startswith("spotify_")]
+            
+        self._worker = CloeWorker(self.client, self.messages, current_tools, self.dispatcher, text)
         self._worker.response_ready.connect(lambda r: self._on_response(r, solo=solo))
         self._worker.start()
 
