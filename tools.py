@@ -180,6 +180,37 @@ TOOL_DEFINITIONS = [
             },
         },
     },
+    # Llamadas (solo si hay un CallBridge disponible)
+    {
+        "type": "function",
+        "function": {
+            "name": "phone_call",
+            "description": (
+                "Inicia una llamada telefónica real y conversa con la persona "
+                "indicada según el objetivo. Solo úsala si el usuario pide "
+                "explícitamente llamar."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "numero": {
+                        "type": "string",
+                        "description": (
+                            "Número en formato internacional, "
+                            "por ejemplo +5215512345678"
+                        ),
+                    },
+                    "objetivo": {
+                        "type": "string",
+                        "description": (
+                            "Qué debe decir o lograr Cloe durante la llamada"
+                        ),
+                    },
+                },
+                "required": ["numero", "objetivo"],
+            },
+        },
+    },
 ]
 
 
@@ -190,6 +221,7 @@ class ToolDispatcher:
         self._sp = services.get("spotify")
         self._cal = services.get("calendar")
         self._gmail = services.get("gmail")
+        self._calls = services.get("calls")
 
     def run(self, name: str, args: dict) -> str:
         handlers = {
@@ -207,6 +239,7 @@ class ToolDispatcher:
             "calendar_create":       self._calendar_create,
             "gmail_unread":          self._gmail_unread,
             "gmail_send":            self._gmail_send,
+            "phone_call":            self._phone_call,
         }
         handler = handlers.get(name)
         if not handler:
@@ -298,6 +331,33 @@ class ToolDispatcher:
         err = self._require_gmail()
         return err or gm_mod.send_email(self._gmail, to, subject, body)
 
+    # Llamadas
+    def _require_calls(self) -> dict | None:
+        bridge = self._calls
+        if bridge is None or not getattr(bridge, "available", False):
+            return {
+                "success": False,
+                "error": (
+                    "Las llamadas no están configuradas todavía. "
+                    "Define CLOE_CALL_PROVIDER y un CallBridge."
+                ),
+            }
+        return None
+
+    def _phone_call(self, numero: str, objetivo: str):
+        err = self._require_calls()
+        if err:
+            return err
+        session = self._calls.start_call(numero, objetivo)
+        return {
+            "success": True,
+            "mensaje": (
+                f"Llamada iniciada a {session.number}. "
+                "Cloe conversará con el objetivo indicado."
+            ),
+            **session.as_dict(),
+        }
+
 
 def available_tool_names(services: dict) -> list[dict]:
     """Filtra herramientas según los servicios disponibles."""
@@ -308,6 +368,7 @@ def available_tool_names(services: dict) -> list[dict]:
     }
     calendar_tools = {"calendar_today", "calendar_upcoming", "calendar_create"}
     gmail_tools = {"gmail_unread", "gmail_send"}
+    call_tools = {"phone_call"}
 
     active: set[str] = set()
     if services.get("spotify"):
@@ -316,5 +377,8 @@ def available_tool_names(services: dict) -> list[dict]:
         active |= calendar_tools
     if services.get("gmail"):
         active |= gmail_tools
+    calls = services.get("calls")
+    if calls is not None and getattr(calls, "available", False):
+        active |= call_tools
 
     return [t for t in TOOL_DEFINITIONS if t["function"]["name"] in active]

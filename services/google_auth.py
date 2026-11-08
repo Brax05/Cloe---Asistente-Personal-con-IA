@@ -12,8 +12,14 @@ SCOPES = [
 
 
 def get_google_credentials() -> Credentials:
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     creds_path = os.getenv("GOOGLE_CREDENTIALS_PATH", "credentials.json")
+    if not os.path.isabs(creds_path):
+        creds_path = os.path.join(base_dir, creds_path)
+
     token_path = os.getenv("GOOGLE_TOKEN_PATH", "token.pickle")
+    if not os.path.isabs(token_path):
+        token_path = os.path.join(base_dir, token_path)
 
     creds = None
     if os.path.exists(token_path):

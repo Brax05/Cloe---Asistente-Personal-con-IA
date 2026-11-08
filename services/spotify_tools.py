@@ -16,12 +16,23 @@ SCOPES = " ".join([
 
 
 def create_client() -> spotipy.Spotify:
+    client_id = (os.getenv("SPOTIFY_CLIENT_ID") or "").strip()
+    client_secret = (os.getenv("SPOTIFY_CLIENT_SECRET") or "").strip()
+    if (
+        not client_id
+        or not client_secret
+        or client_id == "tu_client_id_aqui"
+        or client_secret == "tu_client_secret_aqui"
+    ):
+        raise RuntimeError("Credenciales de Spotify no configuradas en .env")
+    cache_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".cache")
     return spotipy.Spotify(auth_manager=SpotifyOAuth(
-        client_id=os.getenv("SPOTIFY_CLIENT_ID"),
-        client_secret=os.getenv("SPOTIFY_CLIENT_SECRET"),
+        client_id=client_id,
+        client_secret=client_secret,
         redirect_uri=os.getenv("SPOTIFY_REDIRECT_URI", "http://localhost:8888/callback"),
         scope=SCOPES,
-        open_browser=True,
+        open_browser=False,
+        cache_path=cache_file,
     ))
 
 
@@ -71,8 +82,6 @@ _MOOD_GENRES = {
 }
 
 def get_recommendations(sp: spotipy.Spotify, mood: str = "") -> dict:
-    import urllib.parse
-
     genres = ["pop", "latin"]
     audio_params: dict = {}
     search_term = mood or "música popular"
@@ -86,7 +95,7 @@ def get_recommendations(sp: spotipy.Spotify, mood: str = "") -> dict:
                 search_term = f"música {key}"
                 break
 
-    # Intentar API de recomendaciones
+    # Intentar API de recomendaciones sin abrir el navegador
     try:
         recs = sp.recommendations(seed_genres=genres, limit=10, **audio_params)
         tracks = [
@@ -103,13 +112,10 @@ def get_recommendations(sp: spotipy.Spotify, mood: str = "") -> dict:
     except Exception:
         pass
 
-    # Fallback: búsqueda en navegador
-    encoded = urllib.parse.quote(search_term)
-    webbrowser.open(f"https://open.spotify.com/search/{encoded}")
     return {
-        "success": True,
-        "method": "browser_search",
-        "message": f"Abrí una búsqueda de '{search_term}' en Spotify para que elijas.",
+        "success": False,
+        "method": "none",
+        "message": f"No se pudieron obtener recomendaciones de Spotify API para '{search_term}'.",
     }
 
 
@@ -165,12 +171,11 @@ def set_volume(sp: spotipy.Spotify, level: int) -> dict:
 
 
 def play_track(sp: spotipy.Spotify, query: str) -> dict:
-    import urllib.parse
     try:
         results = sp.search(q=query, limit=1, type="track")
         items = results["tracks"]["items"]
         if not items:
-            return _browser_search(query)
+            return {"success": False, "message": f"No encontré '{query}' en Spotify."}
 
         track = items[0]
         info = {
@@ -189,23 +194,10 @@ def play_track(sp: spotipy.Spotify, query: str) -> dict:
         except Exception:
             pass
 
-        webbrowser.open(info["url"])
-        info.update({"success": True, "method": "browser"})
+        info.update({"success": False, "method": "no_active_device"})
         return info
-    except Exception:
-        # Fallback: abre búsqueda directa en Spotify (funciona sin Premium)
-        return _browser_search(query)
-
-
-def _browser_search(query: str) -> dict:
-    import urllib.parse
-    encoded = urllib.parse.quote(query)
-    webbrowser.open(f"https://open.spotify.com/search/{encoded}")
-    return {
-        "success": True,
-        "method": "browser_search",
-        "message": f"Abriendo búsqueda de '{query}' en Spotify.",
-    }
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
 
 
 def add_to_queue(sp: spotipy.Spotify, query: str) -> dict:

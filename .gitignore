@@ -7,4 +7,11 @@ __pycache__/
 credentials.json
 github-profile-README.md
 
-.claude/
+# Memoria y datos locales
+memory.json
+cloe_user_memory.json
+
+# Voz: binarios y modelos grandes (se bajan con python -m voice.setup_models)
+.venv/
+voice/vendor/
+voice/models/

@@ -1,0 +1,13 @@
+# Dependencias de voz de Cloe (opcionales, pero necesarias para --voz)
+#
+# El motor TTS (Piper) y las voces se descargan aparte con:
+#   python -m voice.setup_models
+#
+# faster-whisper usa CTranslate2; en Linux con GPU puede usar CUDA si están
+# instaladas las librerías de CUDA/cuBLAS. Si no, cae automáticamente a CPU.
+faster-whisper>=1.2.1
+numpy>=2.0
+# TTS neural (opcional, más natural que Piper):
+kokoro-onnx>=0.4.0
+edge-tts>=6.1.12
+
