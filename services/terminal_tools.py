@@ -58,13 +58,14 @@ def _resolve_user_folder(folder_hint: str) -> str:
 # ── Detección de Intención de Terminal y Autorización ─────────────────────────
 
 _CONFIRM_YES_PATTERNS = re.compile(
-    r"^\s*(?:s[ií]|s[ií]\s+autorizo|autorizo(?:\s+el\s+comando)?|autorizar|"
-    r"confirmo|confirmar|adelante|hazlo|ejec[uú]talo|dale|ok\s+ejecuta)\s*[.!]*\s*$",
+    r"\b(?:s[ií]|autoriz[oa]|autorizar|autorizado|confirm[oa]|confirmar|confirmado|"
+    r"adelante|hazlo|ejec[uú]talo|ejecutalo|dale|procede|de\s+acuerdo|claro|por\s+supuesto|"
+    r"b[oó]rral[oa]|elimin[aá]l[oa]|borra|elimina|ok)\b",
     re.IGNORECASE,
 )
 
 _CONFIRM_NO_PATTERNS = re.compile(
-    r"^\s*(?:no|cancelar(?:\s+comando)?|cancela|no\s+lo\s+hagas|detente|abortar)\s*[.!]*\s*$",
+    r"\b(?:no|cancela|cancelar|no\s+lo\s+hagas|detente|abortar|para|alto|espera|rechazar)\b",
     re.IGNORECASE,
 )
 
@@ -76,8 +77,8 @@ _TERMINAL_INTENT_PATTERNS = [
     r"listar\s+carpeta|qu[eé]\s+hay\s+en\s+mi\s+carpeta|ver\s+archivos\s+de)\b",
     r"\b(?:crea\s+una\s+carpeta|crear\s+carpeta|crea\s+un\s+directorio|"
     r"crea\s+un\s+archivo|crear\s+archivo)\b",
-    r"\b(?:borra\s+(?:el\s+)?archivo|elimina\s+(?:el\s+)?archivo|borrar\s+archivo|"
-    r"eliminar\s+archivo|borra\s+la\s+carpeta|elimina\s+la\s+carpeta)\b",
+    r"\b(?:borr(?:ar?|a|es|ame|en)|elimin(?:ar?|a|es|ame|en)|quit(?:ar?|a|es)|remov(?:er?|e))\b.*\b(?:archivo|fichero|carpeta|directorio|prueba|pruebas|test)\b",
+    r"\b(?:borr(?:ar?|a|es|ame|en)|elimin(?:ar?|a|es|ame|en))\s+(?:la|el|una?|esa?|este?|de\s+)?",
     r"\b(?:busca\s+(?:el\s+)?archivo|buscar\s+archivo|encuentra\s+(?:el\s+)?archivo)\b",
     r"\b(?:qu[eé]\s+puertos\s+est[aá]n\s+abiertos|puertos\s+en\s+uso|mi\s+direcci[oó]n\s+ip|"
     r"cu[aá]l\s+es\s+mi\s+ip|qu[eé]\s+procesos\s+consumen|procesos\s+activos|"
@@ -89,15 +90,15 @@ _TERMINAL_INTENT_PATTERNS = [
 def is_terminal_confirmation_reply(user_text: str) -> str | None:
     """
     Si hay un comando esperando autorización, detecta si el usuario dijo 'autorizo' ('yes')
-    o 'cancelar' ('no'). Devuelve 'yes', 'no' o None.
+    o 'cancelar' ('no'). Admite respuestas naturales como 'sí bórrala', 'hazlo', 'ok', etc.
     """
     if _PENDING_COMMAND is None:
         return None
     cleaned = (user_text or "").strip()
-    if _CONFIRM_YES_PATTERNS.match(cleaned):
-        return "yes"
-    if _CONFIRM_NO_PATTERNS.match(cleaned):
+    if _CONFIRM_NO_PATTERNS.search(cleaned):
         return "no"
+    if _CONFIRM_YES_PATTERNS.search(cleaned):
+        return "yes"
     return None
 
 
@@ -114,6 +115,114 @@ def is_terminal_request(user_text: str) -> bool:
     if low.startswith(("terminal:", "bash:", "cmd:", "comando:")):
         return True
     return False
+
+
+def _extract_delete_target(text: str) -> tuple[str, str]:
+    """Extrae el nombre del archivo/carpeta a borrar y la carpeta contenedora si se especificó."""
+    clean_text = text.strip()
+    where_hint = ""
+    m_where = re.search(
+        r"\b(?:en|de|desde)\s+(?:mi\s+|el\s+|la\s+)?(escritorio|descargas|documentos|imagenes|imágenes|home|carpeta\s+personal)\b",
+        clean_text,
+        re.I,
+    )
+    if m_where:
+        where_hint = m_where.group(1)
+        clean_text = clean_text[:m_where.start()].strip()
+
+    clean = re.sub(
+        r"^\s*(?:por\s+favor\s+|cloe\s+|puedes\s+)*\b(?:borr(?:ar?|a|es|ame|en)|elimin(?:ar?|a|es|ame|en)|quit(?:ar?|a|es)|remov(?:er?|e))\b\s*",
+        "",
+        clean_text,
+        flags=re.I,
+    ).strip()
+    clean = re.sub(
+        r"^(?:(?:la|el|los|las|un|una|unos|unas|esa|ese|este|esta)\s+)?(?:carpeta|directorio|archivo|fichero)\s+(?:de\s+|llamada?\s+)?",
+        "",
+        clean,
+        flags=re.I,
+    ).strip()
+    clean = re.sub(r"^(?:de\s+)", "", clean, flags=re.I).strip()
+    clean = clean.strip("'\"` ")
+    return clean, where_hint
+
+
+_PROTECTED_DIRS = {
+    HOME_DIR,
+    "/",
+    "/home",
+    "/root",
+    "/etc",
+    "/usr",
+    "/bin",
+    "/sbin",
+    "/var",
+    "/tmp",
+    os.path.join(HOME_DIR, "Documentos"),
+    os.path.join(HOME_DIR, "Documents"),
+    os.path.join(HOME_DIR, "Escritorio"),
+    os.path.join(HOME_DIR, "Desktop"),
+    os.path.join(HOME_DIR, "Descargas"),
+    os.path.join(HOME_DIR, "Downloads"),
+    os.path.join(HOME_DIR, "Imágenes"),
+    os.path.join(HOME_DIR, "Pictures"),
+    os.path.join(HOME_DIR, "Música"),
+    os.path.join(HOME_DIR, "Music"),
+    os.path.join(HOME_DIR, "Vídeos"),
+    os.path.join(HOME_DIR, "Videos"),
+    PROJECT_DIR,
+}
+
+
+def _find_target_to_delete(name_hint: str, where_hint: str = "") -> str | None:
+    """Busca de forma inteligente el archivo o carpeta que el usuario quiere borrar sin tocar carpetas protegidas."""
+    search_dirs = []
+    if where_hint:
+        search_dirs.append(_resolve_user_folder(where_hint))
+    else:
+        # Priorizar Escritorio, Descargas y /tmp antes que el HOME completo
+        search_dirs.extend([
+            os.path.join(HOME_DIR, "Escritorio"),
+            os.path.join(HOME_DIR, "Descargas"),
+            "/tmp",
+        ])
+
+    q_low = name_hint.strip().lower()
+    if not q_low:
+        return None
+
+    # 1. Búsqueda exacta en directorios candidatos
+    for d in search_dirs:
+        if not os.path.isdir(d):
+            continue
+        exact_path = os.path.join(d, name_hint.strip())
+        if os.path.exists(exact_path) and os.path.realpath(exact_path) not in _PROTECTED_DIRS:
+            return exact_path
+
+    # 2. Búsqueda difusa específica para carpetas o archivos de prueba
+    for d in search_dirs:
+        if not os.path.isdir(d):
+            continue
+        try:
+            for item in os.listdir(d):
+                cand = os.path.join(d, item)
+                if os.path.realpath(cand) in _PROTECTED_DIRS:
+                    continue
+                low = item.lower()
+                # Coincidencia exacta insensible a mayúsculas
+                if q_low == low:
+                    return cand
+                # Coincidencia si el usuario dijo 'pruebas' / 'carpeta de prueba'
+                if q_low in ("prueba", "pruebas") and re.search(r"\bpruebas?\b", low):
+                    return cand
+                if q_low in ("test", "tests") and re.search(r"\btests?\b", low):
+                    return cand
+                # Coincidencia si el nombre completo del item está contenido o contiene la frase
+                if len(q_low) > 4 and (q_low in low or low in q_low):
+                    return cand
+        except Exception:
+            pass
+    return None
 
 
 # ── Clasificador de Seguridad de 3 Niveles (SAFE / CONFIRM / BLOCKED) ─────────
@@ -237,6 +346,17 @@ def classify_command_safety(command: str) -> tuple[str, str]:
                 first_tok = cmd.split()[0].lower() if cmd.split() else ""
                 if first_tok in _READONLY_PREFIXES:
                     continue
+
+            # Excepción para borrado de pruebas o archivos temporales:
+            if "Elimina archivos o carpetas" in reason:
+                # Si está dentro de Documentos, SÍ requiere confirmación obligatoria
+                if "Documentos" in cmd or "Documents" in cmd:
+                    return "CONFIRM", "Elimina archivos o carpetas dentro de tu carpeta de Documentos."
+                # Si es una carpeta o archivo de prueba o temporal fuera de Documentos, es seguro borrarlo directamente
+                cmd_low = cmd.lower()
+                if any(w in cmd_low for w in ("prueba", "test", "temp", "tmp", "/tmp/")):
+                    continue
+
             return "CONFIRM", reason
 
     # 3. Si tiene redirecciones `>` que sobrescriben archivos (salvo /dev/null), pedir confirmación
@@ -341,6 +461,16 @@ def _fast_rule_translate(user_text: str) -> tuple[str, str] | None:
         base_dir = _resolve_user_folder(where_hint) if where_hint else HOME_DIR
         target_path = os.path.join(base_dir, folder_name)
         return f"mkdir -p {shlex.quote(target_path)} && ls -ld {shlex.quote(target_path)}", f"Crear carpeta {target_path}"
+
+    # Borrar / eliminar carpeta o archivo
+    if re.search(r"\b(?:borr(?:ar?|a|es|ame|en)|elimin(?:ar?|a|es|ame|en)|quit(?:ar?|a|es))\b", low):
+        target_name, where_hint = _extract_delete_target(text)
+        if target_name:
+            resolved_path = _find_target_to_delete(target_name, where_hint)
+            if resolved_path:
+                return f"rm -rf {shlex.quote(resolved_path)}", f"Eliminar {resolved_path}"
+            else:
+                return f"echo 'No se encontró la carpeta o archivo \"{target_name}\" para eliminar' && exit 1", f"Verificar existencia de {target_name}"
 
     # Puertos abiertos
     if re.search(r"\b(?:puertos\s+abiertos|puertos\s+en\s+uso|qu[eé]\s+puertos)\b", low):
