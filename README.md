@@ -1,4 +1,4 @@
-# Cloe — Asistente Personal con IA & Cyber-Pet
+# Cloe — Asistente Personal con IA
 
 Asistente personal de escritorio para Linux con IA multimodal, voz fluida, visión de pantalla, memoria persistente, control del PC y ejecución segura de terminal. Puede funcionar 100% local con Ollama o en la nube gratuita a 0% GPU (Groq / Gemini).
 
@@ -197,7 +197,7 @@ El script verificará tus credenciales y abrirá el navegador para autorizar con
 cloe/
 ├── chat.py                   # Cerebro conversacional, tool dispatcher y streaming
 ├── gui/
-│   └── desktop_pet.py        # GUI de escritorio Cyber-Neko (PyQt6)
+│   └── desktop_pet.py        # GUI de escritorio de Cloe (PyQt6)
 ├── services/
 │   ├── terminal_tools.py     # Terminal Linux con sandbox y autorización
 │   ├── vision_clipboard_tools.py # Captura de pantalla, ventana activa y portapapeles

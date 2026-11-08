@@ -251,7 +251,7 @@ VOICE_PRESETS = {
 }
 
 
-# ── Estilos Cristal Cyber-Neko (Glassmorphism + Paleta Tokyo Night) ───────────
+# ── Estilos Cristal Cloe (Glassmorphism + Paleta Tokyo Night) ───────────
 GLASS_PANEL_STYLE = """
 QWidget {
     color: #d5dcf9;
@@ -382,7 +382,7 @@ def paint_frosted_glass(
     p.setBrush(shine)
     p.drawRoundedRect(rect, radius, radius)
 
-    # Borde luminoso estilo Cyber-Neko
+    # Borde luminoso estilo Cloe
     b_col = border_color or QColor(125, 207, 255, 110)
     border = QLinearGradient(0, rect.top(), 0, rect.bottom())
     border.setColorAt(0.0, b_col)
@@ -1281,7 +1281,7 @@ class PopupSidePanel(QWidget):
 # ── Mascota Virtual + Círculo de Cristal (Sprite Pixel-Art 16x16 + Kaomojis) ──
 class NekoOrbWidget(QWidget):
     """
-    Círculo de cristal que muestra a la gatita Cyber-Neko en Pixel-Art 16x16
+    Círculo de cristal que muestra a Cloe en Pixel-Art 16x16
     con su píldora de Kaomoji sobre las orejas, partículas flotantes y anillo de voz.
     """
 
@@ -1294,7 +1294,7 @@ class NekoOrbWidget(QWidget):
         self.setFixedSize(self.WIDTH, self.HEIGHT)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setToolTip(
-            "Cloe // Cyber-Neko ฅ^•ﻌ•^ฅ\n"
+            "Cloe ฅ^•ﻌ•^ฅ\n"
             "• Mantén presionado 1 vez para hablar (suelta para enviar)\n"
             "• Doble clic para charla continua manos libres\n"
             "• Clic corto para acariciar (ronroneo)\n"
@@ -1790,7 +1790,7 @@ class PetStatsBar(QFrame):
 class CloePet(QWidget):
     """
     Única GUI de Cloe:
-    Combina el diseño Cyber-Neko de mascota_virtual_ia_local_pop_up.html con fondo cristal,
+    Combina el diseño de Cloe con fondo cristal,
     conversación de voz fluida (1 clic mantenido = push-to-talk, doble clic = charla continua)
     y burbuja/panel contextual siempre al costado izquierdo.
     """
