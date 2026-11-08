@@ -23,12 +23,32 @@ Asistente personal de escritorio para Linux con IA multimodal, voz fluida, visi�
 
 ---
 
-## Interacción y Visión de Pantalla
+## Visión de Pantalla en Tiempo Real
 
-Cloe vive como una mascota flotante transparente en tu escritorio y cuenta con visión multimodal para analizar lo que estás haciendo, detectar errores de programación o ayudarte con documentos.
+Cloe puede ver lo que tienes en pantalla, analizar tu terminal, inspeccionar ventanas activas y ayudarte a diagnosticar errores de código o resumir documentos abiertos.
 
 <p align="center">
-  <img src="assets/cloe_escritorio_vision.png" alt="Cloe analizando la pantalla completa y la ventana activa del usuario" width="780"/>
+  <img src="assets/cloe_vision_pantalla.png" alt="Cloe analizando en tiempo real la pantalla y el contenido del terminal del usuario" width="780"/>
+</p>
+
+---
+
+## Ejecución Segura de Terminal y Gestión de Archivos
+
+Puedes pedirle a Cloe que realice tareas de terminal como consultar procesos, listar directorios o eliminar carpetas de prueba temporales sin complicaciones. Cuenta con un sistema de seguridad de 3 niveles que protege archivos del sistema y solicita confirmación interactiva para comandos delicados.
+
+<p align="center">
+  <img src="assets/cloe_terminal_borrado.png" alt="Cloe eliminando de forma segura una carpeta de prueba a petición del usuario en el terminal" width="780"/>
+</p>
+
+---
+
+## Panel de Configuración Integrado
+
+Puedes alternar el motor de inteligencia artificial (Groq, Gemini u Ollama) y configurar el sintetizador de voz (Kokoro, Piper o Edge-TTS), timbre de voz y velocidad directamente desde la interfaz gráfica sin editar archivos manualmente.
+
+<p align="center">
+  <img src="assets/cloe_configuracion.png" alt="Panel de ajustes de Cloe para seleccionar modelo de IA, motor de voz y velocidad" width="600"/>
 </p>
 
 ---
@@ -100,7 +120,7 @@ CLOE_OLLAMA_MODEL=cloe
 
 ---
 
-## Controles de la Mascota y Panel Lateral
+## Controles de la Mascota y Acciones Rápidas
 
 <p align="center">
   <img src="assets/cloe_acciones_rapidas.png" alt="Detalle del panel lateral con chips de acción rápida y dock inferior" width="620"/>
@@ -137,8 +157,9 @@ Puedes decirlas usando el micrófono o escribiéndolas en el campo de texto:
 ### Terminal Linux con Protocolo de Seguridad
 - *"¿Qué archivos tengo en mi carpeta de Descargas?"*
 - *"Crea una carpeta llamada pruebas en mi Escritorio."*
+- *"Borra la carpeta de pruebas."*
 - *"¿Qué procesos están consumiendo más memoria?"*
-- **Filtro de seguridad**: Si pides un comando delicado (como borrar archivos o usar sudo), Cloe no lo ejecuta a ciegas; muestra una tarjeta interactiva con botones **Autorizar** y **Cancelar** para que des tu permiso explícito.
+- **Filtro de seguridad**: Si pides un comando delicado sobre documentos o carpetas críticas, Cloe solicita autorización explícita antes de ejecutarlo.
 
 ### Control del Sistema Linux
 - *"Sube el volumen al 70%"* o *"Silencia el audio"*.
