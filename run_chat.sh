@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -eu
 cd "$(dirname "$0")"
-./start_ollama.sh
-.venv/bin/python chat.py "$@"
+
+if [ -f "./start_ollama.sh" ]; then
+    ./start_ollama.sh || true
+fi
+
+exec .venv/bin/python chat.py "$@"
